@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEMMStore Garage</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap">
+</head>
+<body>
+    <div class="header">
+        <h1 class="title">GEMMStore Garage</h1>
+        <span id="webgpu-status" class="webgpu-status"></span>
+    </div>
+    <div class="divider"></div>
+    
+    <main class="editor-container">
+        <div class="editor-section">
+            <div class="editor-header">
+                <div class="editor-title">
+                    <span class="wgsl-logo"></span>
+                    Shader Editor
+                </div>
+            </div>
+            <textarea id="shader-editor" placeholder="Enter your WGSL shader code here..."></textarea>
+        </div>
+
+        <div class="controls-section">
+            <div class="editor-actions">
+                <button class="button run-button" onclick="runShader()">Run Shader</button>
+                <button class="button clear-button" onclick="clearOutput()">Clear Output</button>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="matrix-size">Matrix Size:</label>
+                    <input type="number" id="matrix-size" value="256" min="16" max="1024" step="16" onchange="updateMatrixSize()">
+                </div>
+                <div class="control-group">
+                    <label for="warmup-runs">Warmup Runs:</label>
+                    <input type="number" id="warmup-runs" value="3" min="1" max="10">
+                </div>
+                <div class="control-group">
+                    <label for="iterations">Iterations:</label>
+                    <input type="number" id="iterations" value="10" min="1" max="100">
+                </div>
+                <div class="control-group">
+                    <label for="verification-points">Verification Checks:</label>
+                    <input type="number" id="verification-points" value="50" min="1" max="100">
+                </div>
+            </div>
+
+            <div class="output-container">
+                <div id="verification-result"></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html> 
