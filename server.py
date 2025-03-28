@@ -16,9 +16,6 @@ def get_chrome_path():
             return None
     else:  # Linux
         chrome_path = "google-chrome"
-        if not os.path.exists(chrome_path):
-            print("Error: Chrome not found. Please install Google Chrome.")
-            return None
     return chrome_path
 
 def launch_chrome_with_flags(port):
