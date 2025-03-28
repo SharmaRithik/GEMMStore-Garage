@@ -24,12 +24,20 @@ pip install requests
 
 1. Start the server:
 ```bash
-python server.py
+python server.py [port]  # default port is 8000 if not specified
+```
+
+Examples:
+```bash
+python server.py        # uses default port 8000
+python server.py 8080   # uses port 8080
 ```
 
 2. The application will automatically:
    - Launch a new Chrome instance with WebGPU debugging enabled
-   - Open the interface at `http://localhost:8063`
+   - Open the interface at the specified port (e.g., `http://localhost:8080`)
+
+Note: Port number must be between 1024 and 65535.
 
 ## Using the Interface
 
@@ -46,6 +54,7 @@ Python server that:
 - Serves the web interface
 - Launches Chrome with WebGPU debugging flags
 - Enables shader dumping via Dawn features
+- Accepts optional port number as command-line argument
 
 ### `index.html`
 Main interface containing:

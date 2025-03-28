@@ -1,12 +1,11 @@
 import http.server
 import socketserver
 import webbrowser
-import os
 import sys
+import os
 import subprocess
 import time
-import json
-import requests
+import platform
 
 def get_chrome_path():
     """Get the path to Chrome executable based on the platform."""
@@ -22,7 +21,7 @@ def get_chrome_path():
             return None
     return chrome_path
 
-def launch_chrome_with_flags():
+def launch_chrome_with_flags(port):
     """Launch Chrome with WebGPU debug flags."""
     chrome_path = get_chrome_path()
     if not chrome_path:
@@ -45,7 +44,7 @@ def launch_chrome_with_flags():
                          stderr=subprocess.DEVNULL)
 
         # Launch Chrome with flags and URL
-        subprocess.Popen([chrome_path] + flags + ["http://localhost:8063"])
+        subprocess.Popen([chrome_path] + flags + [f"http://localhost:{port}"])
         print("Chrome launched with WebGPU debug flags")
         return True
     except Exception as e:
@@ -53,22 +52,43 @@ def launch_chrome_with_flags():
         return False
 
 def main():
-    PORT = 0023
+    # Default port if not specified
+    DEFAULT_PORT = 8000
+    
+    # Get port from command line argument if provided
+    if len(sys.argv) > 1:
+        try:
+            port = int(sys.argv[1])
+            if port < 1024 or port > 65535:
+                print("Error: Port number must be between 1024 and 65535")
+                return
+        except ValueError:
+            print("Error: Port must be a number")
+            return
+    else:
+        port = DEFAULT_PORT
+
     Handler = http.server.SimpleHTTPRequestHandler
 
-    with socketserver.TCPServer(("", PORT), Handler) as httpd:
-        print(f"Serving at http://localhost:{PORT}")
-        
-        # Launch Chrome with debug flags
-        if not launch_chrome_with_flags():
-            print("Failed to launch Chrome with debug flags. Opening in default browser...")
-            webbrowser.open(f'http://localhost:{PORT}')
-        
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("\nShutting down server...")
-            httpd.shutdown()
+    try:
+        with socketserver.TCPServer(("", port), Handler) as httpd:
+            print(f"Serving at http://localhost:{port}")
+            
+            # Launch Chrome with debug flags
+            if not launch_chrome_with_flags(port):
+                print("Failed to launch Chrome with debug flags. Opening in default browser...")
+                webbrowser.open(f'http://localhost:{port}')
+            
+            try:
+                httpd.serve_forever()
+            except KeyboardInterrupt:
+                print("\nShutting down server...")
+                httpd.shutdown()
+    except OSError as e:
+        if "Address already in use" in str(e):
+            print(f"Error: Port {port} is already in use. Please try a different port.")
+        else:
+            print(f"Error: {e}")
 
 if __name__ == "__main__":
     main() 

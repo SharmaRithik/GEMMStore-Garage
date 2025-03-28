@@ -1,4 +1,49 @@
-// Initialize CodeMirror
+// Matrix dimensions
+let MATRIX_SIZE = 256;
+let NUM_VERIFICATION_CHECKS = 50;
+
+// Default shader code
+const getDefaultShaderCode = () => `
+const BLOCK_DIM_X = 16u;
+const BLOCK_DIM_Y = 16u;
+
+struct Matrix {
+    size : vec2u,
+    numbers : array<f32>,
+};
+
+struct Uniforms {
+    M : u32,
+    N : u32,
+    K : u32,
+    alpha : f32,
+    beta : f32,
+};
+
+@group(0) @binding(0) var<storage, read> A : Matrix;
+@group(0) @binding(1) var<storage, read> B : Matrix;
+@group(0) @binding(2) var<storage, read_write> C : Matrix;
+@group(0) @binding(3) var<uniform> uniforms : Uniforms;
+
+@compute @workgroup_size(16, 16)
+fn main(
+    @builtin(workgroup_id) blockIdx : vec3<u32>,
+    @builtin(local_invocation_id) threadIdx : vec3<u32>
+) {
+    let x = blockIdx.x * BLOCK_DIM_X + threadIdx.x;
+    let y = blockIdx.y * BLOCK_DIM_Y + threadIdx.y;
+
+    if (x < uniforms.M && y < uniforms.N) {
+        var tmp: f32 = 0.0;
+        for (var i: u32 = 0u; i < uniforms.K; i = i + 1u) {
+            tmp = tmp + A.numbers[x * uniforms.K + i] * B.numbers[i * uniforms.N + y];
+        }
+        let idx = x * uniforms.N + y;
+        C.numbers[idx] = uniforms.alpha * tmp + uniforms.beta * C.numbers[idx];
+    }
+}`;
+
+// Initialize CodeMirror with the default shader code
 const editor = CodeMirror.fromTextArea(document.getElementById("shader-editor"), {
     mode: "javascript",
     theme: "monokai",
@@ -11,14 +56,12 @@ const editor = CodeMirror.fromTextArea(document.getElementById("shader-editor"),
     extraKeys: {
         "TouchEvent": { passive: true },
         "WheelEvent": { passive: true }
-    }
+    },
+    value: getDefaultShaderCode()
 });
 
-// Matrix dimensions
-let MATRIX_SIZE = 256;
-const BLOCK_DIM_X = 16;
-const BLOCK_DIM_Y = 16;
-let NUM_VERIFICATION_CHECKS = 50;
+// Set the initial content
+editor.setValue(getDefaultShaderCode());
 
 // Check WebGPU support
 const webgpuStatus = document.getElementById('webgpu-status');
@@ -51,51 +94,6 @@ async function checkWebGPUSupport() {
 
 // Call the check immediately
 checkWebGPUSupport();
-
-// Set default shader code with matrix multiplication implementation
-editor.setValue(`const BLOCK_DIM_X = 16u; // Matches CUDA blockDim.x
-const BLOCK_DIM_Y = 16u; // Matches CUDA blockDim.y
-
-struct Matrix {
-    size : vec2u,
-    numbers : array<f32>,
-}
-
-struct Uniforms {
-    M : u32,
-    N : u32,
-    K : u32,
-    alpha : f32,
-    beta : f32,
-}
-
-@group(0) @binding(0) var<storage, read> A : Matrix;
-@group(0) @binding(1) var<storage, read> B : Matrix;
-@group(0) @binding(2) var<storage, read_write> C : Matrix;
-@group(0) @binding(3) var<uniform> uniforms : Uniforms;
-
-@compute @workgroup_size(16, 16)
-fn main(
-    @builtin(workgroup_id) blockIdx : vec3<u32>,
-    @builtin(local_invocation_id) threadIdx : vec3<u32>
-) {
-    let x = blockIdx.x * BLOCK_DIM_X + threadIdx.x;
-    let y = blockIdx.y * BLOCK_DIM_Y + threadIdx.y;
-
-    // Ensure we stay within the matrix bounds
-    if (x < uniforms.M && y < uniforms.N) {
-        var tmp: f32 = 0.0;
-
-        // Accumulate matrix multiplication results
-        for (var i: u32 = 0u; i < uniforms.K; i = i + 1u) {
-            tmp = tmp + A.numbers[x * uniforms.K + i] * B.numbers[i * uniforms.N + y];
-        }
-
-        // Compute final result for C with scaling
-        let idx = x * uniforms.N + y;
-        C.numbers[idx] = uniforms.alpha * tmp + uniforms.beta * C.numbers[idx];
-    }
-}`);
 
 function generateRandomMatrix(size) {
     const matrix = new Float32Array(size * size);
@@ -231,6 +229,14 @@ async function runShader() {
 
         const device = await adapter.requestDevice();
         const shaderCode = editor.getValue();
+
+        // Extract workgroup size from shader code
+        const workgroupMatch = shaderCode.match(/@compute\s+@workgroup_size\s*\((\d+)\s*,\s*(\d+)\)/);
+        if (!workgroupMatch) {
+            throw new Error('Could not find workgroup size in shader code. Please ensure @workgroup_size is properly defined.');
+        }
+        const BLOCK_DIM_X = parseInt(workgroupMatch[1]);
+        const BLOCK_DIM_Y = parseInt(workgroupMatch[2]);
 
         const shaderModule = device.createShaderModule({
             code: shaderCode
